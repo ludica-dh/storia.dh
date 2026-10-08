@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rassegna appuntamenti</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+:root{
+  --paper:#EFEAE1;
+  --paper-alt:#F8F5EE;
+  --ink:#221F1A;
+  --ink-soft:#5A5546;
+  --accent:#2E3A55;
+  --accent-warm:#A97F2E;
+  --line:#D8D0BC;
+  --danger:#8B3A3A;
+  --radius:4px;
+  --maxw:1320px;
+}
+
+*{
+  box-sizing:border-box;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+  margin:0;
+  background:var(--paper);
+  background-image:radial-gradient(circle at 1px 1px, rgba(34,31,26,0.035) 1px, transparent 0);
+  background-size:22px 22px;
+  color:var(--ink);
+  font-family:'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+
+h1,
+h2,
+h3{
+  font-family:'Fraunces', Georgia, serif;
+  margin:0;
+}
+
+a{
+  color:inherit;
+}
+
+button{
+  font-family:inherit;
+}
+
+:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:3px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *{
+    animation-duration:0.01ms !important;
+    transition-duration:0.01ms !important;
+  }
+}
+
+/* ---------- Masthead ---------- */
+
+.masthead{
+  max-width:var(--maxw);
+  margin:0 auto;
+  padding:56px 28px 28px;
+  border-bottom:1px solid var(--line);
+}
+
+.masthead h1{
+  font-size:clamp(2rem, 3.6vw, 2.9rem);
+  font-weight:600;
+  font-style:italic;
+  letter-spacing:-0.01em;
+  max-width:18ch;
+}
+
+.masthead .intro{
+  margin-top:16px;
+  max-width:72ch;
+  font-size:1.02rem;
+  color:var(--ink-soft);
+}
+
+.masthead .intro p{
+  margin:0 0 10px;
+}
+
+.masthead .intro p:last-child{
+  margin-bottom:0;
+}
+
+/* ---------- Toolbar ---------- */
+
+.toolbar{
+  max-width:var(--maxw);
+  margin:0 auto;
+  padding:20px 28px 0;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+}
+
+.toolbar input[type="search"]{
+  flex:1 1 260px;
+  max-width:420px;
+  padding:9px 13px;
+  border:1px solid var(--line);
+  background:var(--paper-alt);
+  border-radius:var(--radius);
+  font-size:0.92rem;
+  color:var(--ink);
+}
+
+.toolbar input[type="search"]::placeholder{
+  color:var(--ink-soft);
+}
+
+.toolbar .sortgroup{
+  display:flex;
+  gap:6px;
+  margin-left:auto;
+}
+
+.toolbar .sortgroup button{
+  border:1px solid var(--line);
+  background:var(--paper-alt);
+  color:var(--ink-soft);
+  padding:7px 13px;
+  border-radius:var(--radius);
+  font-size:0.85rem;
+  cursor:pointer;
+}
+
+.toolbar .sortgroup button.active{
+  background:var(--ink);
+  color:var(--paper-alt);
+  border-color:var(--ink);
+}
+
+.toolbar .count{
+  font-size:0.82rem;
+  color:var(--ink-soft);
+  font-style:italic;
+}
+
+/* ---------- Galleria ---------- */
+
+.gallery-wrap{
+  max-width:var(--maxw);
+  margin:0 auto;
+  padding:28px 28px 70px;
+}
+
+.gallery{
+  columns:4 260px;
+  column-gap:20px;
+}
+
+.tile{
+  break-inside:avoid;
+  margin-bottom:20px;
+  position:relative;
+  border-radius:var(--radius);
+  overflow:hidden;
+  cursor:pointer;
+  border:1px solid var(--line);
+  background:var(--paper-alt);
+  display:block;
+  width:100%;
+  padding:0;
+  text-align:left;
+}
+
+.tile img{
+  width:100%;
+  display:block;
+  transition:transform .4s ease;
+}
+
+.tile:hover img{
+  transform:scale(1.04);
+}
+
+.pdf-preview-wrap{
+  width:100%;
+  aspect-ratio:3 / 4;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(160deg, #DCD5C2, #CBC2A9);
+  overflow:hidden;
+}
+
+.pdf-preview{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+
+.doc-face{
+  width:100%;
+  aspect-ratio:3 / 4;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  background:linear-gradient(160deg, #DCD5C2, #CBC2A9);
+  color:var(--accent);
+}
+
+.doc-face svg{
+  width:34px;
+  height:34px;
+}
+
+.doc-face span{
+  font-size:0.75rem;
+  font-style:italic;
+  color:var(--ink-soft);
+}
+
+.tile .badge{
+  position:absolute;
+  top:10px;
+  left:10px;
+  background:var(--accent-warm);
+  color:var(--paper-alt);
+  font-size:0.68rem;
+  font-weight:600;
+  letter-spacing:0.02em;
+  padding:3px 9px;
+  border-radius:100px;
+}
+
+.tile .overlay{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  padding:34px 14px 12px;
+  background:linear-gradient(to top, rgba(18,16,12,0.92) 0%, rgba(18,16,12,0.55) 55%, transparent 100%);
+  color:#F5F1E7;
+}
+
+.tile .overlay .date{
+  font-size:0.72rem;
+  font-style:italic;
+  opacity:0.85;
+}
+
+.tile .overlay h3{
+  font-size:0.98rem;
+  font-weight:600;
+  color:#F8F5EE;
+  margin-top:3px;
+  line-height:1.25;
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+.tile .overlay .participants{
+  font-size:0.78rem;
+  font-style:italic;
+  opacity:0.88;
+  margin-top:3px;
+}
+
+/* ---------- Stati ---------- */
+
+.state{
+  max-width:var(--maxw);
+  margin:0 auto;
+  padding:40px 28px 60px;
+  color:var(--ink-soft);
+}
+
+.state.error{
+  color:var(--danger);
+}
+
+.state .details{
+  font-size:0.85rem;
+  margin-top:10px;
+  opacity:0.85;
+}
+
+/* ---------- Modale ---------- */
+
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(20,18,14,0.74);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  z-index:100;
+}
+
+.modal-backdrop.open{
+  display:flex;
+}
+
+.modal{
+  background:var(--paper-alt);
+  max-width:960px;
+  width:100%;
+  max-height:88vh;
+  overflow-y:auto;
+  border-radius:var(--radius);
+  position:relative;
+}
+
+.modal .close{
+  position:absolute;
+  top:14px;
+  right:14px;
+  background:var(--ink);
+  color:var(--paper);
+  width:32px;
+  height:32px;
+  border-radius:50%;
+  border:none;
+  cursor:pointer;
+  font-size:1.1rem;
+  line-height:1;
+  z-index:2;
+}
+
+.modal .media{
+  width:100%;
+  max-height:62vh;
+  background:#DAD3C1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+
+.modal .media:empty{
+  display:none;
+}
+
+.modal .media img{
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  display:block;
+}
+
+.modal .media iframe{
+  width:100%;
+  height:62vh;
+  border:none;
+}
+
+.modal .media canvas{
+  max-width:100%;
+  height:auto;
+  display:block;
+}
+
+.modal .body{
+  padding:30px 34px 36px;
+}
+
+.modal .date{
+  font-style:italic;
+  color:var(--accent-warm);
+}
+
+.modal h3{
+  font-size:1.6rem;
+  font-weight:600;
+  margin-top:8px;
+  line-height:1.3;
+}
+
+.modal .participants{
+  font-style:italic;
+  color:var(--accent);
+  margin-top:8px;
+}
+
+.modal .meta-list{
+  margin-top:18px;
+  display:grid;
+  gap:8px;
+  color:var(--ink-soft);
+}
+
+.modal .meta-row{
+  display:grid;
+  grid-template-columns:130px 1fr;
+  gap:12px;
+  border-top:1px solid var(--line);
+  padding-top:8px;
+}
+
+.modal .meta-label{
+  font-weight:600;
+  color:var(--ink);
+}
+
+.modal .actions{
+  margin-top:22px;
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.btn{
+  display:inline-block;
+  border:1px solid var(--ink);
+  padding:8px 16px;
+  border-radius:var(--radius);
+  font-size:0.88rem;
+  text-decoration:none;
+  color:var(--ink);
+  background:transparent;
+}
+
+.btn:hover{
+  background:var(--ink);
+  color:var(--paper-alt);
+}
+
+@media (max-width:640px){
+  .masthead{
+    padding:36px 20px 22px;
+  }
+
+  .toolbar{
+    padding:18px 20px 0;
+  }
+
+  .toolbar .sortgroup{
+    margin-left:0;
+  }
+
+  .gallery-wrap{
+    padding:24px 20px 60px;
+  }
+
+  .gallery{
+    columns:2 160px;
+    column-gap:12px;
+  }
+
+  .tile{
+    margin-bottom:12px;
+  }
+
+  .modal .body{
+    padding:28px 24px 32px;
+  }
+
+  .modal .meta-row{
+    grid-template-columns:1fr;
+    gap:2px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header class="masthead">
+  <h1>Rassegna appuntamenti</h1>
+
+  <div class="intro">
+    <p>Una galleria degli appuntamenti, dei seminari e degli incontri in programma.</p>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input
+    type="search"
+    id="search"
+    placeholder="Cerca per titolo, partecipanti, luogo o aula…"
+    aria-label="Cerca negli appuntamenti"
+  >
+
+  <div class="sortgroup" role="group" aria-label="Ordina">
+    <button id="sortDesc" class="active" type="button">Più recenti</button>
+    <button id="sortAsc" type="button">Meno recenti</button>
+  </div>
+
+  <span class="count" id="count"></span>
+</div>
+
+<main class="gallery-wrap">
+  <div class="state" id="loading">Caricamento della rassegna…</div>
+  <div class="gallery" id="gallery" style="display:none;"></div>
+</main>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button class="close" id="modalClose" aria-label="Chiudi">&times;</button>
+
+    <div class="media" id="modalMedia"></div>
+
+    <div class="body">
+      <div class="date" id="modalDate"></div>
+      <h3 id="modalTitle"></h3>
+      <div class="participants" id="modalParticipants"></div>
+
+      <div class="meta-list" id="modalMeta"></div>
+
+      <div class="actions" id="modalActions"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   CONFIGURAZIONE
+   ===================================================================== */
+
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR_JkPIgTFhgTsPrGdmJMLBnKPy6gwHTOuLKn1c6hb1TfuRD4tVRrkePfk_ws1UxGuJW2lf02N2j0P2/pub?output=csv";
+
+/*
+  Se una riga del CSV non ha "url locandina",
+  verrà usato questo record Zenodo come locandina predefinita.
+*/
+const DEFAULT_ZENODO_RECORD_URL = "https://zenodo.org/records/22301504";
+
+/*
+  Colonne attese nel CSV:
+
+  data | ora | luogo | aula | titolo | partecipano | url locandina
+*/
+
+if (window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
+/* =====================================================================
+   UTILITY
+   ===================================================================== */
+
+function normalizeHeader(value){
+  return (value || "")
+    .toString()
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function getField(row, name){
+  const wanted = normalizeHeader(name);
+
+  for (const key in row){
+    if (normalizeHeader(key) === wanted){
+      return (row[key] || "").toString().trim();
+    }
+  }
+
+  return "";
+}
+
+function parseDate(raw){
+  if (!raw){
+    return null;
+  }
+
+  const s = raw.trim();
+
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+
+  if (m){
+    return new Date(+m[1], +m[2] - 1, +m[3]);
+  }
+
+  m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+
+  if (m){
+    return new Date(+m[3], +m[2] - 1, +m[1]);
+  }
+
+  const fallback = new Date(s);
+
+  return isNaN(fallback) ? null : fallback;
+}
+
+const MESI = [
+  "gennaio",
+  "febbraio",
+  "marzo",
+  "aprile",
+  "maggio",
+  "giugno",
+  "luglio",
+  "agosto",
+  "settembre",
+  "ottobre",
+  "novembre",
+  "dicembre"
+];
+
+function formatDate(date){
+  if (!date){
+    return "";
+  }
+
+  return `${date.getDate()} ${MESI[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function escapeHtml(value){
+  return (value || "").toString().replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char]));
+}
+
+function isUrl(value){
+  return /^https?:\/\//i.test((value || "").trim());
+}
+
+function isImageUrl(url){
+  const clean = (url || "").split("?")[0].toLowerCase();
+
+  return clean.match(/\.(jpg|jpeg|png|gif|webp|avif)$/);
+}
+
+function isPdfUrl(url){
+  const clean = (url || "").split("?")[0].toLowerCase();
+
+  return clean.endsWith(".pdf") || clean.includes("/files/");
+}
+
+function isZenodoRecordUrl(url){
+  return /zenodo\.org\/records?\/\d+/i.test(url || "");
+}
+
+function getZenodoRecordId(url){
+  const match = (url || "").match(/zenodo\.org\/records?\/(\d+)/i);
+
+  return match ? match[1] : null;
+}
+
+function docFace(label){
+  return `
+    <div class="doc-face">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M6 2h9l5 5v15H6z"></path>
+        <path d="M15 2v5h5"></path>
+        <path d="M9 13h6M9 17h6"></path>
+      </svg>
+      <span>${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+/* =====================================================================
+   ZENODO / LOCANDINE
+   ===================================================================== */
+
+const zenodoCache = {};
+const pdfPreviewCache = {};
+
+async function resolveZenodoPdf(recordUrl){
+  const recordId = getZenodoRecordId(recordUrl);
+
+  if (!recordId){
+    return null;
+  }
+
+  if (zenodoCache[recordId]){
+    return zenodoCache[recordId];
+  }
+
+  try {
+    const response = await fetch(`https://zenodo.org/api/records/${recordId}`, {
+      cache: "no-store"
+    });
+
+    if (!response.ok){
+      throw new Error("Errore Zenodo API " + response.status);
+    }
+
+    const data = await response.json();
+    const files = data.files || [];
+
+    const pdfFile = files.find(file => {
+      const key = (file.key || "").toLowerCase();
+      return key.endsWith(".pdf");
+    });
+
+    if (!pdfFile){
+      return null;
+    }
+
+    const directUrl =
+      pdfFile.links && (pdfFile.links.self || pdfFile.links.download)
+        ? (pdfFile.links.self || pdfFile.links.download)
+        : null;
+
+    const result = {
+      recordUrl: recordUrl,
+      pdfUrl: directUrl,
+      filename: pdfFile.key || "locandina.pdf"
+    };
+
+    zenodoCache[recordId] = result;
+
+    return result;
+
+  } catch (error) {
+    console.warn("Impossibile risolvere PDF Zenodo:", error);
+    return null;
+  }
+}
+
+async function resolvePoster(rawUrl){
+  const source = rawUrl && rawUrl.trim()
+    ? rawUrl.trim()
+    : DEFAULT_ZENODO_RECORD_URL;
+
+  if (!source){
+    return {
+      sourceUrl: "",
+      pdfUrl: "",
+      imageUrl: "",
+      recordUrl: "",
+      filename: ""
+    };
+  }
+
+  if (isZenodoRecordUrl(source)){
+    const resolved = await resolveZenodoPdf(source);
+
+    if (resolved){
+      return {
+        sourceUrl: source,
+        pdfUrl: resolved.pdfUrl,
+        imageUrl: "",
+        recordUrl: source,
+        filename: resolved.filename
+      };
+    }
+
+    return {
+      sourceUrl: source,
+      pdfUrl: "",
+      imageUrl: "",
+      recordUrl: source,
+      filename: ""
+    };
+  }
+
+  if (isImageUrl(source)){
+    return {
+      sourceUrl: source,
+      pdfUrl: "",
+      imageUrl: source,
+      recordUrl: "",
+      filename: ""
+    };
+  }
+
+  if (isPdfUrl(source)){
+    return {
+      sourceUrl: source,
+      pdfUrl: source,
+      imageUrl: "",
+      recordUrl: "",
+      filename: "locandina.pdf"
+    };
+  }
+
+  return {
+    sourceUrl: source,
+    pdfUrl: source,
+    imageUrl: "",
+    recordUrl: "",
+    filename: "locandina"
+  };
+}
+
+async function renderPdfPreviewIntoCanvas(canvas, pdfUrl, scaleFactor){
+  if (!window.pdfjsLib || !pdfUrl || !canvas){
+    return false;
+  }
+
+  const cacheKey = pdfUrl + "::" + scaleFactor;
+
+  if (pdfPreviewCache[cacheKey]){
+    const cachedImage = pdfPreviewCache[cacheKey];
+    const context = canvas.getContext("2d");
+
+    canvas.width = cachedImage.width;
+    canvas.height = cachedImage.height;
+
+    context.drawImage(cachedImage, 0, 0);
+
+    return true;
+  }
+
+  try {
+    const loadingTask = pdfjsLib.getDocument({
+      url: pdfUrl,
+      withCredentials: false
+    });
+
+    const pdf = await loadingTask.promise;
+    const page = await pdf.getPage(1);
+
+    const viewport = page.getViewport({
+      scale: scaleFactor
+    });
+
+    const context = canvas.getContext("2d");
+
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({
+      canvasContext: context,
+      viewport: viewport
+    }).promise;
+
+    const image = new Image();
+    image.src = canvas.toDataURL("image/png");
+    image.width = canvas.width;
+    image.height = canvas.height;
+
+    pdfPreviewCache[cacheKey] = image;
+
+    return true;
+
+  } catch (error) {
+    console.warn("Anteprima PDF non disponibile:", error);
+    return false;
+  }
+}
+
+async function renderPdfPreviews(){
+  const canvases = document.querySelectorAll("canvas.pdf-preview[data-pdf]");
+
+  for (const canvas of canvases){
+    const pdfUrl = canvas.getAttribute("data-pdf");
+    const ok = await renderPdfPreviewIntoCanvas(canvas, pdfUrl, 0.65);
+
+    if (!ok){
+      const wrapper = canvas.closest(".pdf-preview-wrap");
+
+      if (wrapper){
+        wrapper.outerHTML = docFace("Locandina PDF");
+      }
+    }
+  }
+}
+
+/* =====================================================================
+   DATI
+   ===================================================================== */
+
+let ALL_ITEMS = [];
+let sortDir = "desc";
+
+async function loadData(){
+  try {
+    const response = await fetch(SHEET_URL, {
+      cache: "no-store"
+    });
+
+    if (!response.ok){
+      throw new Error("Errore HTTP " + response.status);
+    }
+
+    const csvText = await response.text();
+
+    const parsed = Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true
+    });
+
+    if (parsed.errors && parsed.errors.length){
+      console.warn("Avvisi PapaParse:", parsed.errors);
+    }
+
+    if (!parsed.data || !parsed.data.length){
+      showError("Nessun dato trovato", "Il foglio è stato letto ma non contiene righe.");
+      return;
+    }
+
+    const rawItems = parsed.data
+      .map(row => {
+        const dateRaw = getField(row, "data");
+        const date = parseDate(dateRaw);
+
+        return {
+          dateRaw: dateRaw,
+          date: date,
+          time: getField(row, "ora"),
+          place: getField(row, "luogo"),
+          room: getField(row, "aula"),
+          title: getField(row, "titolo"),
+          participants: getField(row, "partecipano"),
+          posterRawUrl: getField(row, "url locandina")
+        };
+      })
+      .filter(item => item.title);
+
+    for (const item of rawItems){
+      item.poster = await resolvePoster(item.posterRawUrl);
+    }
+
+    ALL_ITEMS = rawItems;
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("gallery").style.display = "block";
+
+    render(ALL_ITEMS);
+
+  } catch (error) {
+    showError(
+      "Impossibile leggere il foglio",
+      "Verifica che il Google Sheet sia pubblicato sul web come CSV. Dettaglio tecnico: " + error.message
+    );
+  }
+}
+
+function showError(title, detail){
+  const loading = document.getElementById("loading");
+
+  loading.outerHTML = `
+    <div class="state error">
+      <strong>${escapeHtml(title)}</strong>
+      <div class="details">${escapeHtml(detail)}</div>
+    </div>
+  `;
+}
+
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+
+function render(items){
+  const sorted = [...items].sort((a,b) => {
+    const da = a.date ? a.date.getTime() : -Infinity;
+    const db = b.date ? b.date.getTime() : -Infinity;
+
+    return sortDir === "desc" ? db - da : da - db;
+  });
+
+  const gallery = document.getElementById("gallery");
+
+  gallery.innerHTML = sorted
+    .map(item => tileMarkup(item, ALL_ITEMS.indexOf(item)))
+    .join("");
+
+  gallery.querySelectorAll(".tile").forEach(tile => {
+    tile.addEventListener("click", () => {
+      openModal(ALL_ITEMS[+tile.dataset.id]);
+    });
+  });
+
+  document.getElementById("count").textContent = `${items.length} appuntamenti`;
+
+  renderPdfPreviews();
+}
+
+function tileMarkup(item, index){
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  const isFuture = item.date && item.date >= today;
+
+  const badge = isFuture
+    ? `<span class="badge">In programma</span>`
+    : "";
+
+  let media = "";
+
+  if (item.poster && item.poster.imageUrl){
+    media = `<img src="${escapeHtml(item.poster.imageUrl)}" alt="${escapeHtml(item.title)}" loading="lazy">`;
+  } else if (item.poster && item.poster.pdfUrl){
+    media = `
+      <div class="pdf-preview-wrap">
+        <canvas class="pdf-preview" data-pdf="${escapeHtml(item.poster.pdfUrl)}" aria-label="Anteprima locandina PDF"></canvas>
+      </div>
+    `;
+  } else {
+    media = docFace("Nessuna locandina");
+  }
+
+  return `
+    <button class="tile" data-id="${index}" type="button">
+      ${media}
+      ${badge}
+
+      <div class="overlay">
+        ${item.date ? `<div class="date">${formatDate(item.date)}</div>` : ""}
+        <h3>${escapeHtml(item.title)}</h3>
+        ${item.participants ? `<div class="participants">${escapeHtml(item.participants)}</div>` : ""}
+      </div>
+    </button>
+  `;
+}
+
+/* =====================================================================
+   RICERCA E ORDINAMENTO
+   ===================================================================== */
+
+document.getElementById("search").addEventListener("input", event => {
+  const q = normalizeHeader(event.target.value);
+
+  const filtered = !q
+    ? ALL_ITEMS
+    : ALL_ITEMS.filter(item =>
+        normalizeHeader(item.title).includes(q) ||
+        normalizeHeader(item.participants).includes(q) ||
+        normalizeHeader(item.place).includes(q) ||
+        normalizeHeader(item.room).includes(q) ||
+        normalizeHeader(item.time).includes(q) ||
+        normalizeHeader(item.dateRaw).includes(q)
+      );
+
+  render(filtered);
+});
+
+document.getElementById("sortDesc").addEventListener("click", () => setSort("desc"));
+document.getElementById("sortAsc").addEventListener("click", () => setSort("asc"));
+
+function setSort(direction){
+  sortDir = direction;
+
+  document.getElementById("sortDesc").classList.toggle("active", direction === "desc");
+  document.getElementById("sortAsc").classList.toggle("active", direction === "asc");
+
+  render(ALL_ITEMS);
+}
+
+/* =====================================================================
+   MODALE
+   ===================================================================== */
+
+const backdrop = document.getElementById("modalBackdrop");
+
+async function openModal(item){
+  document.getElementById("modalDate").textContent = item.date ? formatDate(item.date) : "";
+  document.getElementById("modalTitle").textContent = item.title;
+  document.getElementById("modalParticipants").textContent = item.participants || "";
+
+  const media = document.getElementById("modalMedia");
+
+  if (item.poster && item.poster.imageUrl){
+    media.innerHTML = `<img src="${escapeHtml(item.poster.imageUrl)}" alt="${escapeHtml(item.title)}">`;
+  } else if (item.poster && item.poster.pdfUrl){
+    media.innerHTML = `<canvas id="modalPdfCanvas" aria-label="Anteprima locandina PDF"></canvas>`;
+
+    const canvas = document.getElementById("modalPdfCanvas");
+    const ok = await renderPdfPreviewIntoCanvas(canvas, item.poster.pdfUrl, 1.4);
+
+    if (!ok){
+      media.innerHTML = `<iframe src="${escapeHtml(item.poster.pdfUrl)}" title="Locandina PDF"></iframe>`;
+    }
+  } else {
+    media.innerHTML = "";
+  }
+
+  const metaRows = [];
+
+  if (item.time){
+    metaRows.push({
+      label: "Ora",
+      value: item.time
+    });
+  }
+
+  if (item.place){
+    metaRows.push({
+      label: "Luogo",
+      value: item.place
+    });
+  }
+
+  if (item.room){
+    metaRows.push({
+      label: "Aula",
+      value: item.room
+    });
+  }
+
+  document.getElementById("modalMeta").innerHTML = metaRows.map(row => `
+    <div class="meta-row">
+      <div class="meta-label">${escapeHtml(row.label)}</div>
+      <div>${escapeHtml(row.value)}</div>
+    </div>
+  `).join("");
+
+  const actions = document.getElementById("modalActions");
+
+  actions.innerHTML = "";
+
+  if (item.poster && item.poster.pdfUrl){
+    actions.innerHTML += `
+      <a class="btn" href="${escapeHtml(item.poster.pdfUrl)}" target="_blank" rel="noopener">
+        Scarica la locandina PDF
+      </a>
+    `;
+  }
+
+  if (item.poster && item.poster.recordUrl){
+    actions.innerHTML += `
+      <a class="btn" href="${escapeHtml(item.poster.recordUrl)}" target="_blank" rel="noopener">
+        Apri il record Zenodo
+      </a>
+    `;
+  } else if (item.poster && item.poster.sourceUrl && isUrl(item.poster.sourceUrl)){
+    actions.innerHTML += `
+      <a class="btn" href="${escapeHtml(item.poster.sourceUrl)}" target="_blank" rel="noopener">
+        Apri la locandina
+      </a>
+    `;
+  }
+
+  backdrop.classList.add("open");
+  document.getElementById("modalClose").focus();
+}
+
+function closeModal(){
+  backdrop.classList.remove("open");
+}
+
+document.getElementById("modalClose").addEventListener("click", closeModal);
+
+backdrop.addEventListener("click", event => {
+  if (event.target === backdrop){
+    closeModal();
+  }
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape"){
+    closeModal();
+  }
+});
+
+loadData();
+</script>
+</body>
+</html>
