@@ -478,8 +478,12 @@ button{
 
 /* Il contenitore resta trasparente nell'iframe WordPress. */
 html, body { background:transparent; }
+body { position:relative; }
+.toolbar, .gallery-wrap { max-width:none; }
 .toolbar { padding-top:12px; }
 .gallery-wrap { padding-top:22px; }
+.gallery { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; columns:auto; }
+.tile { margin-bottom:0; align-self:start; }
 .tile img { aspect-ratio:3 / 4; object-fit:cover; }
 .tile img + .doc-face { display:none; }
 .tile .overlay .description { font-size:.78rem; line-height:1.35; margin-top:3px;
@@ -487,7 +491,15 @@ html, body { background:transparent; }
 .modal .description { white-space:pre-line; margin-top:16px; color:var(--ink-soft); }
 .state { padding:24px 0; }
 .gallery:empty { display:none; }
-@media(max-width:640px){ .gallery { columns:1 220px; } }
+.pagination { display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-top:28px; }
+.pagination:empty { display:none; }
+.pagination button { border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-alt); color:var(--ink); padding:8px 13px; cursor:pointer; }
+.pagination button.active { background:var(--ink); color:white; border-color:var(--ink); }
+.pagination button:disabled { opacity:.45; cursor:default; }
+.modal-backdrop { position:absolute; align-items:flex-start; }
+.modal { max-height:720px; }
+@media(max-width:900px){ .gallery { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:600px){ .gallery { grid-template-columns:minmax(0,1fr); gap:12px; } }
 </style>
 </head>
 
@@ -509,9 +521,10 @@ html, body { background:transparent; }
   <span class="count" id="count"></span>
 </div>
 
-<main class="gallery-wrap">
+<main class="gallery-wrap" id="galleryStart">
   <div class="state" id="loading">Caricamento della rassegna…</div>
   <div class="gallery" id="gallery" style="display:none;"></div>
+  <nav class="pagination" id="pagination" aria-label="Pagine degli appuntamenti"></nav>
 </main>
 
 <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
@@ -542,7 +555,17 @@ const MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio'
 const gallery = document.getElementById('gallery');
 const state = document.getElementById('loading');
 const backdrop = document.getElementById('modalBackdrop');
-let items = [], sortDir = 'desc', previousFocus = null, modalVersion = 0;
+let items = [], sortDir = 'desc', currentPage = 1, previousFocus = null, modalVersion = 0;
+const PAGE_SIZE = 6;
+function reportHeight() {
+  // La pagina WordPress regola l'altezza dell'iframe in base al contenuto.
+  const modal=document.getElementById('modal');
+  const modalEnd=backdrop.classList.contains('open') ? modal.getBoundingClientRect().bottom+24 : 0;
+  window.parent.postMessage({type:'ludica-appuntamenti-height',height:Math.ceil(Math.max(document.body.scrollHeight,modalEnd))}, '*');
+}
+if ('ResizeObserver' in window) new ResizeObserver(reportHeight).observe(document.body);
+window.addEventListener('load',reportHeight);
+window.addEventListener('resize',reportHeight);
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const norm = v => String(v ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -585,7 +608,7 @@ async function loadData() {
       item.image=imageUrl(item.poster);
       return item;
     }).filter(x=>x.title);
-    items=fresh; state.style.display='none'; gallery.style.display='block'; render();
+    items=fresh; state.style.display='none'; gallery.style.display='grid'; render();
     if (!fresh.length) showState('Non ci sono ancora appuntamenti pubblicati.');
   } catch (error) {
     console.error('Errore caricamento appuntamenti:',error);
@@ -600,7 +623,9 @@ function render() {
     const db=(b.start || b.end)?.getTime() ?? -Infinity;
     return sortDir === 'desc' ? db-da : da-db;
   });
-  gallery.innerHTML=matches.map(x=>{
+  const pageCount=Math.ceil(matches.length/PAGE_SIZE);
+  currentPage=Math.max(1,Math.min(currentPage,pageCount || 1));
+  gallery.innerHTML=matches.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE).map(x=>{
     const i=items.indexOf(x), image=x.image;
     const media=image ? `<img src="${esc(image)}" alt="" loading="lazy" onerror="this.parentElement.querySelector('.doc-face').style.display='flex';this.style.display='none'">${face('Locandina non disponibile')}` : face(x.pdf || x.poster ? 'Apri la locandina' : 'Appuntamento');
     const today=new Date(); today.setHours(0,0,0,0);
@@ -608,7 +633,22 @@ function render() {
     return `<button class="tile" data-id="${i}" type="button" aria-label="Dettagli: ${esc(x.title)}">${media}${upcoming ? '<span class="badge">In programma</span>':''}<div class="overlay">${dates(x)?`<div class="date">${esc(dates(x))}</div>`:''}<h3>${esc(x.title)}</h3>${x.description?`<div class="description">${esc(x.description)}</div>`:''}</div></button>`;
   }).join('');
   document.getElementById('count').textContent=`${matches.length} ${matches.length===1?'appuntamento':'appuntamenti'}`;
+  const pagination=document.getElementById('pagination');
+  pagination.replaceChildren();
+  if (pageCount>1) {
+    const addButton=(label,page,active=false)=>{
+      const btn=document.createElement('button');btn.type='button';btn.textContent=label;btn.disabled=page<1||page>pageCount;
+      if(active){btn.className='active';btn.setAttribute('aria-current','page');}
+      btn.addEventListener('click',()=>{currentPage=page;render();document.getElementById('galleryStart').scrollIntoView({block:'start',behavior:'instant'});});
+      pagination.append(btn);
+    };
+    addButton('‹ Precedente',currentPage-1);
+    for(let page=1;page<=pageCount;page++) addButton(String(page),page,page===currentPage);
+    addButton('Successiva ›',currentPage+1);
+    pagination.setAttribute('aria-label',`Pagine degli appuntamenti: pagina ${currentPage} di ${pageCount}`);
+  }
   if (!matches.length && items.length) { showState('Nessun appuntamento corrisponde alla ricerca.'); } else if (items.length) state.style.display='none';
+  requestAnimationFrame(reportHeight);
 }
 function addLink(container,url,label) { if (!url) return; const a=document.createElement('a'); a.className='btn'; a.href=url; a.target='_blank'; a.rel='noopener noreferrer'; a.textContent=label; container.append(a); }
 async function showPdf(canvas,url,version) {
@@ -621,7 +661,7 @@ async function showPdf(canvas,url,version) {
     await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
   } catch (e) { console.warn('Anteprima PDF non disponibile:',e); if (version===modalVersion) canvas.replaceWith(Object.assign(document.createElement('div'),{textContent:'Apri la locandina PDF con il pulsante qui sotto.'})); }
 }
-function openModal(item) {
+function openModal(item, tile) {
   previousFocus=document.activeElement;
   const version=++modalVersion;
   document.getElementById('modalTitle').textContent=item.title;
@@ -636,12 +676,14 @@ function openModal(item) {
   if (item.pdf && item.pdf!==item.poster) addLink(actions,item.pdf,'Apri la locandina PDF');
   if (item.image) { const img=document.createElement('img');img.src=item.image;img.alt=`Locandina: ${item.title}`;img.onerror=()=>media.replaceChildren();media.append(img); }
   else if (item.pdf && kind(item.pdf)==='pdf') { const canvas=document.createElement('canvas'); canvas.setAttribute('aria-label','Anteprima locandina PDF'); media.append(canvas); showPdf(canvas,item.pdf,version); }
-  backdrop.classList.add('open');backdrop.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';document.getElementById('modalClose').focus();
+  document.getElementById('modal').style.marginTop=Math.max(20,tile.getBoundingClientRect().top-80)+'px';
+  backdrop.classList.add('open');backdrop.setAttribute('aria-hidden','false');document.getElementById('modalClose').focus();
+  requestAnimationFrame(reportHeight);
 }
-function closeModal() { ++modalVersion;backdrop.classList.remove('open');backdrop.setAttribute('aria-hidden','true');document.body.style.overflow='';previousFocus?.focus(); }
-gallery.addEventListener('click', e=>{const tile=e.target.closest('.tile'); if (tile) openModal(items[Number(tile.dataset.id)]);});
-document.getElementById('search').addEventListener('input',render);
-for (const dir of ['desc','asc']) document.getElementById(dir==='desc'?'sortDesc':'sortAsc').addEventListener('click',()=>{sortDir=dir;document.getElementById('sortDesc').classList.toggle('active',dir==='desc');document.getElementById('sortAsc').classList.toggle('active',dir==='asc');render();});
+function closeModal() { ++modalVersion;backdrop.classList.remove('open');backdrop.setAttribute('aria-hidden','true');previousFocus?.focus();requestAnimationFrame(reportHeight); }
+gallery.addEventListener('click', e=>{const tile=e.target.closest('.tile'); if (tile) openModal(items[Number(tile.dataset.id)],tile);});
+document.getElementById('search').addEventListener('input',()=>{currentPage=1;render();});
+for (const dir of ['desc','asc']) document.getElementById(dir==='desc'?'sortDesc':'sortAsc').addEventListener('click',()=>{sortDir=dir;currentPage=1;document.getElementById('sortDesc').classList.toggle('active',dir==='desc');document.getElementById('sortAsc').classList.toggle('active',dir==='asc');render();});
 document.getElementById('modalClose').addEventListener('click',closeModal);
 backdrop.addEventListener('click',e=>{if(e.target===backdrop)closeModal();});
 document.addEventListener('keydown',e=>{if(!backdrop.classList.contains('open'))return;if(e.key==='Escape')closeModal();if(e.key==='Tab'){const controls=[...backdrop.querySelectorAll('button,a[href]')].filter(x=>x.getClientRects().length);const first=controls[0],last=controls.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
