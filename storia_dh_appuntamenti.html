@@ -11,7 +11,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
 
 <style>
 :root{
@@ -484,10 +484,20 @@ body { position:relative; }
 .gallery-wrap { padding-top:22px; }
 .gallery { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:20px; columns:auto; }
 .tile { margin-bottom:0; align-self:start; }
-.tile img { aspect-ratio:3 / 4; object-fit:cover; }
+.tile { cursor:default; display:flex; flex-direction:column; height:100%; background:rgba(248,245,238,.8); }
+.tile img { aspect-ratio:3 / 4; object-fit:contain; background:rgba(216,208,188,.25); }
+.tile:hover img { transform:none; }
 .tile img + .doc-face { display:none; }
+.tile .badge { position:static; display:inline-block; align-self:flex-start; margin-bottom:8px; }
+.tile .overlay { position:static; padding:16px; background:transparent; color:var(--ink); display:flex; flex-direction:column; flex:1; }
+.tile .overlay .date { color:var(--accent-warm); opacity:1; }
+.tile .overlay h3 { color:var(--ink); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .tile .overlay .description { font-size:.78rem; line-height:1.35; margin-top:3px;
-  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  color:var(--ink-soft); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.tile .place { color:var(--ink-soft); font-size:.78rem; margin-top:8px; }
+.tile .links { display:flex; gap:7px; flex-wrap:wrap; padding:0 16px 16px; }
+.tile .links a { font-size:.78rem; border:1px solid var(--line); padding:6px 10px; border-radius:var(--radius); text-decoration:none; color:var(--accent); }
+.tile .links a:hover { background:var(--accent); color:white; }
 .modal .description { white-space:pre-line; margin-top:16px; color:var(--ink-soft); }
 .state { padding:24px 0; }
 .gallery:empty { display:none; }
@@ -496,8 +506,6 @@ body { position:relative; }
 .pagination button { border:1px solid var(--line); border-radius:var(--radius); background:var(--paper-alt); color:var(--ink); padding:8px 13px; cursor:pointer; }
 .pagination button.active { background:var(--ink); color:white; border-color:var(--ink); }
 .pagination button:disabled { opacity:.45; cursor:default; }
-.modal-backdrop { position:absolute; align-items:flex-start; }
-.modal { max-height:720px; }
 @media(max-width:900px){ .gallery { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:600px){ .gallery { grid-template-columns:minmax(0,1fr); gap:12px; } }
 </style>
@@ -527,24 +535,6 @@ body { position:relative; }
   <nav class="pagination" id="pagination" aria-label="Pagine degli appuntamenti"></nav>
 </main>
 
-<div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
-  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" tabindex="-1">
-    <button class="close" id="modalClose" aria-label="Chiudi">&times;</button>
-
-    <div class="media" id="modalMedia"></div>
-
-    <div class="body">
-      <div class="date" id="modalDate"></div>
-      <h3 id="modalTitle"></h3>
-      <div class="description" id="modalDescription"></div>
-
-      <div class="meta-list" id="modalMeta"></div>
-
-      <div class="actions" id="modalActions"></div>
-    </div>
-  </div>
-</div>
-
 <script>
 'use strict';
 // CSV pubblicato: gli aggiornamenti del foglio si vedono al successivo caricamento
@@ -554,19 +544,15 @@ const FIELDS = ['titolo','descrizione','data inizio','data fine','luogo','url lo
 const MONTHS = ['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
 const gallery = document.getElementById('gallery');
 const state = document.getElementById('loading');
-const backdrop = document.getElementById('modalBackdrop');
-let items = [], sortDir = 'desc', currentPage = 1, previousFocus = null, modalVersion = 0;
+let items = [], sortDir = 'desc', currentPage = 1;
 const PAGE_SIZE = 6;
 function reportHeight() {
   // La pagina WordPress regola l'altezza dell'iframe in base al contenuto.
-  const modal=document.getElementById('modal');
-  const modalEnd=backdrop.classList.contains('open') ? modal.getBoundingClientRect().bottom+24 : 0;
-  window.parent.postMessage({type:'ludica-appuntamenti-height',height:Math.ceil(Math.max(document.body.scrollHeight,modalEnd))}, '*');
+  window.parent.postMessage({type:'ludica-appuntamenti-height',height:Math.ceil(document.body.scrollHeight)}, '*');
 }
 if ('ResizeObserver' in window) new ResizeObserver(reportHeight).observe(document.body);
 window.addEventListener('load',reportHeight);
 window.addEventListener('resize',reportHeight);
-if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 const norm = v => String(v ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function safeUrl(value) { try { const u = new URL(String(value || '').trim()); return ['https:','http:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } }
@@ -627,10 +613,12 @@ function render() {
   currentPage=Math.max(1,Math.min(currentPage,pageCount || 1));
   gallery.innerHTML=matches.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE).map(x=>{
     const i=items.indexOf(x), image=x.image;
-    const media=image ? `<img src="${esc(image)}" alt="" loading="lazy" onerror="this.parentElement.querySelector('.doc-face').style.display='flex';this.style.display='none'">${face('Locandina non disponibile')}` : face(x.pdf || x.poster ? 'Apri la locandina' : 'Appuntamento');
+    const media=image ? `<img src="${esc(image)}" alt="Locandina: ${esc(x.title)}" loading="lazy" onerror="this.parentElement.querySelector('.doc-face').style.display='flex';this.style.display='none'">${face('Locandina non disponibile')}` : face(x.pdf || x.poster ? 'Locandina disponibile' : 'Appuntamento');
     const today=new Date(); today.setHours(0,0,0,0);
     const upcoming=(x.end || x.start) >= today;
-    return `<button class="tile" data-id="${i}" type="button" aria-label="Dettagli: ${esc(x.title)}">${media}${upcoming ? '<span class="badge">In programma</span>':''}<div class="overlay">${dates(x)?`<div class="date">${esc(dates(x))}</div>`:''}<h3>${esc(x.title)}</h3>${x.description?`<div class="description">${esc(x.description)}</div>`:''}</div></button>`;
+    const urls=[[x.info,'Maggiori informazioni'],[x.poster,'Locandina'],[x.pdf,'Locandina PDF']].filter(([url],j,all)=>url && all.findIndex(([v])=>v===url)===j);
+    const links=urls.map(([url,label])=>`<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`).join('');
+    return `<article class="tile">${media}<div class="overlay">${upcoming ? '<span class="badge">In programma</span>':''}${dates(x)?`<div class="date">${esc(dates(x))}</div>`:''}<h3>${esc(x.title)}</h3>${x.description?`<div class="description">${esc(x.description)}</div>`:''}${x.place?`<div class="place">${esc(x.place)}</div>`:''}</div>${links?`<div class="links">${links}</div>`:''}</article>`;
   }).join('');
   document.getElementById('count').textContent=`${matches.length} ${matches.length===1?'appuntamento':'appuntamenti'}`;
   const pagination=document.getElementById('pagination');
@@ -650,43 +638,8 @@ function render() {
   if (!matches.length && items.length) { showState('Nessun appuntamento corrisponde alla ricerca.'); } else if (items.length) state.style.display='none';
   requestAnimationFrame(reportHeight);
 }
-function addLink(container,url,label) { if (!url) return; const a=document.createElement('a'); a.className='btn'; a.href=url; a.target='_blank'; a.rel='noopener noreferrer'; a.textContent=label; container.append(a); }
-async function showPdf(canvas,url,version) {
-  if (!window.pdfjsLib) return;
-  try {
-    const pdf=await pdfjsLib.getDocument({url,withCredentials:false}).promise;
-    const page=await pdf.getPage(1), viewport=page.getViewport({scale:1.3});
-    if (version!==modalVersion || !backdrop.classList.contains('open')) return;
-    canvas.width=viewport.width; canvas.height=viewport.height;
-    await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-  } catch (e) { console.warn('Anteprima PDF non disponibile:',e); if (version===modalVersion) canvas.replaceWith(Object.assign(document.createElement('div'),{textContent:'Apri la locandina PDF con il pulsante qui sotto.'})); }
-}
-function openModal(item, tile) {
-  previousFocus=document.activeElement;
-  const version=++modalVersion;
-  document.getElementById('modalTitle').textContent=item.title;
-  document.getElementById('modalDate').textContent=dates(item);
-  document.getElementById('modalDescription').textContent=item.description;
-  const meta=document.getElementById('modalMeta'); meta.replaceChildren();
-  if (item.place) { const row=document.createElement('div'); row.className='meta-row'; const label=document.createElement('div');label.className='meta-label';label.textContent='Luogo';const value=document.createElement('div');value.textContent=item.place;row.append(label,value);meta.append(row); }
-  const media=document.getElementById('modalMedia');media.replaceChildren();
-  const actions=document.getElementById('modalActions');actions.replaceChildren();
-  addLink(actions,item.info,'Maggiori informazioni');
-  addLink(actions,item.poster,'Apri la locandina');
-  if (item.pdf && item.pdf!==item.poster) addLink(actions,item.pdf,'Apri la locandina PDF');
-  if (item.image) { const img=document.createElement('img');img.src=item.image;img.alt=`Locandina: ${item.title}`;img.onerror=()=>media.replaceChildren();media.append(img); }
-  else if (item.pdf && kind(item.pdf)==='pdf') { const canvas=document.createElement('canvas'); canvas.setAttribute('aria-label','Anteprima locandina PDF'); media.append(canvas); showPdf(canvas,item.pdf,version); }
-  document.getElementById('modal').style.marginTop=Math.max(20,tile.getBoundingClientRect().top-80)+'px';
-  backdrop.classList.add('open');backdrop.setAttribute('aria-hidden','false');document.getElementById('modalClose').focus();
-  requestAnimationFrame(reportHeight);
-}
-function closeModal() { ++modalVersion;backdrop.classList.remove('open');backdrop.setAttribute('aria-hidden','true');previousFocus?.focus();requestAnimationFrame(reportHeight); }
-gallery.addEventListener('click', e=>{const tile=e.target.closest('.tile'); if (tile) openModal(items[Number(tile.dataset.id)],tile);});
 document.getElementById('search').addEventListener('input',()=>{currentPage=1;render();});
 for (const dir of ['desc','asc']) document.getElementById(dir==='desc'?'sortDesc':'sortAsc').addEventListener('click',()=>{sortDir=dir;currentPage=1;document.getElementById('sortDesc').classList.toggle('active',dir==='desc');document.getElementById('sortAsc').classList.toggle('active',dir==='asc');render();});
-document.getElementById('modalClose').addEventListener('click',closeModal);
-backdrop.addEventListener('click',e=>{if(e.target===backdrop)closeModal();});
-document.addEventListener('keydown',e=>{if(!backdrop.classList.contains('open'))return;if(e.key==='Escape')closeModal();if(e.key==='Tab'){const controls=[...backdrop.querySelectorAll('button,a[href]')].filter(x=>x.getClientRects().length);const first=controls[0],last=controls.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}});
 loadData();setInterval(()=>{if(!document.hidden)loadData();},5*60*1000);
 
 </script>
