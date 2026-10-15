@@ -1,0 +1,281 @@
+<!--
+GALLERIA PROGETTI — PAGINA COMPLETA PER GITHUB PAGES
+Carica questo file nel repository GitHub con nome galleria-progetti.html.
+Pubblica il repository con GitHub Pages.
+Su WordPress o Drupal inserisci soltanto il codice iframe fornito a parte.
+Tutto il caricamento CSV e il rendering vengono eseguiti qui, su GitHub Pages.
+
+COLONNE DEL FOGLIO (una riga per progetto):
+titolo | descrizione | link copertina | link al sito
+Le colonne aggiuntive vuote vengono ignorate; le righe senza titolo sono escluse.
+Per le copertine usa URL pubblici di immagini, non pagine web o PDF.
+I testi del foglio sono trattati come testo semplice, non come HTML.
+-->
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Progetti</title>
+<style>
+/* Il fondo trasparente permette alla pagina di integrarsi nel sito ospitante. */
+html, body { margin: 0; padding: 0; background: transparent; }
+body { display: flow-root; }
+/* PERSONALIZZAZIONE: modifica queste variabili per colori, dimensioni e font.
+   Gli stili agiscono soltanto dentro #galleria-progetti. */
+#galleria-progetti {
+  --gp-font: Arial, Helvetica, sans-serif; /* Font di tutti i testi */
+  --gp-title-size: 34px;                  /* Titolo «Progetti» */
+  --gp-card-title-size: 20px;             /* Titoli delle schede */
+  --gp-text-size: 16px;                   /* Descrizioni e collegamenti */
+  --gp-text: #333333;
+  --gp-description: #595959;
+  --gp-link: #006bd6;
+  --gp-card-background: #ffffff;
+  --gp-border: #e1e1e1;
+  --gp-radius: 10px;                     /* Arrotondamento schede */
+  --gp-gap: 22px;                        /* Distanza tra le schede */
+  --gp-logo-height: 140px;                /* Altezza massima dei loghi */
+  --gp-max-width: 1050px;                /* Larghezza massima della galleria */
+  font-family: var(--gp-font);
+  font-size: var(--gp-text-size);
+  color: var(--gp-text);
+  background: transparent;
+  line-height: 1.35;
+  width: 100%;
+  max-width: var(--gp-max-width);
+  margin: 0 auto;
+  padding: 32px 12px 14px;
+  box-sizing: border-box;
+}
+#galleria-progetti *, #galleria-progetti *::before, #galleria-progetti *::after { box-sizing: border-box; }
+#galleria-progetti [hidden] { display: none !important; }
+#galleria-progetti .gp-heading {
+  font-family: var(--gp-font);
+  font-size: var(--gp-title-size);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  color: var(--gp-text);
+  margin: 0 0 28px;
+  padding: 0;
+}
+/* Tre colonne su desktop; due su tablet; una su telefono. */
+#galleria-progetti .gp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gp-gap); align-items: stretch; }
+#galleria-progetti .gp-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+  background: var(--gp-card-background);
+  border: 1px solid var(--gp-border);
+  border-radius: var(--gp-radius);
+  box-shadow: 0 2px 5px rgba(0,0,0,.08);
+  padding: 18px 18px 22px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+/* I loghi mantengono le loro proporzioni, senza ritagli o ingrandimenti forzati.
+   L'altezza naturale diversa riprende l'effetto dell'immagine di riferimento.
+   Per allineare tutti i titoli aggiungi: height: var(--gp-logo-height);
+   alla regola .gp-cover qui sotto. */
+#galleria-progetti .gp-cover { display: flex; align-items: center; justify-content: center; width: 100%; margin-bottom: 18px; }
+#galleria-progetti .gp-cover img { display: block; width: auto; height: auto; max-width: 100%; max-height: var(--gp-logo-height); object-fit: contain; border: 0; border-radius: 0; box-shadow: none; margin: 0; }
+#galleria-progetti .gp-placeholder { display: flex; align-items: center; justify-content: center; width: 100%; height: 110px; border-radius: 6px; background: #f5f6f7; color: #707070; font-size: 14px; }
+#galleria-progetti .gp-card-title { font-family: var(--gp-font); font-size: var(--gp-card-title-size); line-height: 1.2; font-weight: 700; color: var(--gp-text); margin: 0 0 10px; padding: 0; }
+#galleria-progetti .gp-description { font-family: var(--gp-font); font-size: var(--gp-text-size); color: var(--gp-description); line-height: 1.35; white-space: pre-line; margin: 0 0 16px; padding: 0; }
+#galleria-progetti .gp-link { font-family: var(--gp-font); font-size: var(--gp-text-size); font-weight: 700; color: var(--gp-link); text-decoration: none; border: 0; box-shadow: none; background: transparent; line-height: 1.4; }
+#galleria-progetti .gp-link:hover { text-decoration: underline; }
+#galleria-progetti :focus-visible { outline: 3px solid var(--gp-link); outline-offset: 4px; }
+#galleria-progetti .gp-state { text-align: center; margin: 20px 0; color: var(--gp-description); }
+#galleria-progetti .gp-error { color: #9e2929; }
+#galleria-progetti .gp-tools { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 22px; }
+#galleria-progetti .gp-tools input, #galleria-progetti .gp-tools select { font: inherit; color: var(--gp-text); border: 1px solid var(--gp-border); border-radius: 6px; background: #fff; padding: 10px; max-width: 100%; min-width: 0; }
+#galleria-progetti .gp-tools input { flex: 1 1 220px; }
+#galleria-progetti .gp-pagination { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; margin-top: 26px; }
+#galleria-progetti button { font: inherit; padding: 8px 12px; border: 1px solid var(--gp-border); border-radius: 6px; color: var(--gp-text); background: #fff; cursor: pointer; }
+#galleria-progetti button:disabled { opacity: .45; cursor: default; }
+#galleria-progetti .gp-pagination span { font-size: 14px; }
+@media (max-width: 850px) { #galleria-progetti .gp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { #galleria-progetti .gp-grid { grid-template-columns: minmax(0, 1fr); } #galleria-progetti { padding: 24px 8px 14px; } }
+</style>
+</head>
+<body>
+<section id="galleria-progetti" aria-label="Galleria dei progetti">
+  <!-- Per togliere il titolo, se WordPress lo mostra già, aggiungi hidden all'h2. -->
+  <h2 class="gp-heading">Progetti</h2>
+  <div class="gp-tools" hidden>
+    <input class="gp-search" type="search" placeholder="Cerca un progetto…" aria-label="Cerca per titolo o descrizione">
+    <select class="gp-sort" aria-label="Ordina i progetti">
+      <option value="sheet">Ordine del foglio</option>
+      <option value="az">Titolo A–Z</option>
+      <option value="za">Titolo Z–A</option>
+    </select>
+  </div>
+  <p class="gp-state" role="status" aria-live="polite">Caricamento dei progetti…</p>
+  <div class="gp-grid"></div>
+  <nav class="gp-pagination" aria-label="Pagine dei progetti" hidden></nav>
+  <noscript>Attiva JavaScript nel browser per visualizzare i progetti.</noscript>
+</section>
+
+<script>
+(() => {
+  'use strict';
+  const root = document.getElementById('galleria-progetti');
+  if (!root || root.dataset.ready) return;
+  root.dataset.ready = 'true';
+
+  // PERSONALIZZAZIONE: qui puoi cambiare il foglio e le opzioni della galleria.
+  const CONFIG = {
+    csv: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQR78gM8NSLLBYkxMeafO0fI_NswuTMefDTYh1-jJRNi2chjuBvwTJRyFeqnxBohGpcGZg6q7Vpd60W/pub?gid=1051924504&single=true&output=csv',
+    perPagina: 6,              // 6 = due righe da tre schede; 0 = tutti i progetti.
+    mostraRicerca: false,     // true = mostra ricerca e ordinamento alfabetico.
+    testoLink: 'Visita il sito',
+    nuovaScheda: true,        // true = apre il sito del progetto in un'altra scheda.
+    aggiornaOgniMinuti: 5     // 0 = carica solo all'apertura della pagina.
+  };
+  const grid = root.querySelector('.gp-grid');
+  const state = root.querySelector('.gp-state');
+  const nav = root.querySelector('.gp-pagination');
+  const search = root.querySelector('.gp-search');
+  const sort = root.querySelector('.gp-sort');
+  root.querySelector('.gp-tools').hidden = !CONFIG.mostraRicerca;
+  let items = [], page = 1, loaded = false, busy = false;
+  const normalize = value => String(value || '').replace(/^\uFEFF/, '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
+  function url(value) {
+    try { const parsed = new URL(String(value || '').trim()); return ['https:', 'http:'].includes(parsed.protocol) ? parsed.href : ''; }
+    catch { return ''; }
+  }
+  function coverUrl(value) {
+    const safe = url(value);
+    if (!safe) return '';
+    const parsed = new URL(safe);
+    // Supporto ai collegamenti di condivisione Google Drive (file pubblici).
+    if (parsed.hostname === 'drive.google.com') {
+      const id = parsed.pathname.match(/^\/file\/d\/([\w-]+)/)?.[1] || parsed.searchParams.get('id');
+      if (id && /^[\w-]+$/.test(id)) return 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w1000';
+    }
+    return safe;
+  }
+  // Lettore CSV senza librerie esterne: supporta virgole, virgolette e a capo nei testi.
+  function parseCSV(text) {
+    const rows = []; let row = [], cell = '', quoted = false;
+    text = text.replace(/^\uFEFF/, '');
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (c === '"') {
+        if (quoted && text[i + 1] === '"') { cell += '"'; i++; }
+        else if (quoted || !cell.length) quoted = !quoted;
+        else cell += c;
+      } else if (c === ',' && !quoted) { row.push(cell); cell = ''; }
+      else if ((c === '\n' || c === '\r') && !quoted) {
+        row.push(cell); rows.push(row); row = []; cell = '';
+        if (c === '\r' && text[i + 1] === '\n') i++;
+      } else cell += c;
+    }
+    if (quoted) throw new Error('Virgolette CSV non chiuse.');
+    row.push(cell); rows.push(row);
+    return rows.filter(r => r.some(v => v.trim()));
+  }
+  function node(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+  function showState(message, error = false) {
+    state.textContent = message;
+    state.classList.toggle('gp-error', error);
+    state.hidden = !message;
+  }
+  function makeCard(item) {
+    const card = node('article', 'gp-card');
+    const media = node('div', 'gp-cover');
+    function placeholder() { media.replaceChildren(node('span', 'gp-placeholder', 'Copertina non disponibile')); reportHeight(); }
+    if (item.cover) {
+      const img = node('img'); img.src = item.cover; img.alt = 'Logo del progetto: ' + item.title;
+      img.loading = 'lazy'; img.decoding = 'async';
+      img.addEventListener('error', placeholder, {once: true});
+      img.addEventListener('load', reportHeight, {once: true});
+      media.append(img);
+    } else placeholder();
+    card.append(media, node('h3', 'gp-card-title', item.title));
+    if (item.description) card.append(node('p', 'gp-description', item.description));
+    if (item.site) {
+      const a = node('a', 'gp-link', CONFIG.testoLink); a.href = item.site;
+      if (CONFIG.nuovaScheda) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.setAttribute('aria-label', CONFIG.testoLink + ': ' + item.title + (CONFIG.nuovaScheda ? ' (nuova scheda)' : ''));
+      card.append(a);
+    }
+    return card;
+  }
+  function render() {
+    const q = normalize(search.value);
+    const matches = items.filter(x => !q || normalize(x.title + ' ' + x.description).includes(q));
+    if (sort.value !== 'sheet') matches.sort((a,b) => a.title.localeCompare(b.title, 'it', {sensitivity: 'base', numeric: true}) * (sort.value === 'za' ? -1 : 1));
+    const size = CONFIG.perPagina > 0 ? CONFIG.perPagina : Math.max(1, matches.length);
+    const pages = Math.max(1, Math.ceil(matches.length / size));
+    page = Math.max(1, Math.min(page, pages));
+    grid.replaceChildren(...matches.slice((page-1)*size, page*size).map(makeCard));
+    showState(!items.length ? 'Non ci sono ancora progetti pubblicati.' : !matches.length ? 'Nessun progetto corrisponde alla ricerca.' : '');
+    nav.replaceChildren(); nav.hidden = pages < 2;
+    if (pages > 1) {
+      const button = (label, target) => {
+        const b = node('button', '', label); b.type = 'button'; b.disabled = target < 1 || target > pages;
+        b.addEventListener('click', () => { page = target; render(); const first = grid.querySelector('h3'); if (first) { first.tabIndex = -1; first.focus({preventScroll: true}); } root.scrollIntoView({block: 'start'}); });
+        return b;
+      };
+      nav.append(button('‹ Precedente', page-1), node('span', '', 'Pagina ' + page + ' di ' + pages), button('Successiva ›', page+1));
+    }
+    requestAnimationFrame(reportHeight);
+  }
+  async function loadData() {
+    if (busy) return;
+    busy = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(CONFIG.csv, {cache: 'no-store', signal: controller.signal});
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      const rows = parseCSV(await response.text());
+      const headers = (rows.shift() || []).map(normalize);
+      const required = ['titolo', 'descrizione', 'link copertina', 'link al sito'];
+      if (!required.every(h => headers.includes(h))) throw new Error('Intestazioni richieste: ' + required.join(' | '));
+      const value = (row, key) => String(row[headers.indexOf(key)] || '').trim();
+      const fresh = rows.map(row => ({title: value(row, 'titolo'), description: value(row, 'descrizione'), cover: coverUrl(value(row, 'link copertina')), site: url(value(row, 'link al sito'))})).filter(x => x.title);
+      const changed = !loaded || JSON.stringify(fresh) !== JSON.stringify(items);
+      items = fresh; loaded = true;
+      if (changed || state.classList.contains('gp-error')) render();
+      else if (!items.length) showState('Non ci sono ancora progetti pubblicati.');
+    } catch (error) {
+      console.error('Galleria progetti:', error);
+      if (!loaded) {
+        showState('Impossibile caricare i progetti. Verifica la connessione e che il foglio sia pubblicato sul Web come CSV.', true);
+        const retry = node('button', '', 'Riprova'); retry.type = 'button';
+        retry.addEventListener('click', () => {showState('Caricamento dei progetti…'); loadData();}); state.append(document.createElement('br'), retry);
+      }
+      // Se un aggiornamento fallisce, restano visibili le schede già caricate.
+    } finally { clearTimeout(timer); busy = false; reportHeight(); }
+  }
+  // Se usi GitHub + iframe, un eventuale script della pagina WordPress può
+  // ricevere questo messaggio e aggiornare l'altezza dell'iframe.
+  // Il solo messaggio non ridimensiona l'iframe: serve il ricevitore sul sito.
+  function reportHeight() {
+    if (window.parent !== window) window.parent.postMessage({type: 'galleria-progetti-height', height: Math.ceil(root.getBoundingClientRect().bottom + window.scrollY + 4)}, '*');
+  }
+  if ('ResizeObserver' in window) new ResizeObserver(reportHeight).observe(root);
+  window.addEventListener('resize', reportHeight);
+  window.addEventListener('load', reportHeight);
+  window.addEventListener('message', event => {
+    if (event.source === window.parent && event.data?.type === 'galleria-progetti-measure') reportHeight();
+  });
+  search.addEventListener('input', () => {page = 1; render();});
+  sort.addEventListener('change', () => {page = 1; render();});
+  loadData();
+  if (CONFIG.aggiornaOgniMinuti > 0) setInterval(loadData, CONFIG.aggiornaOgniMinuti * 60000);
+})();
+</script>
+
+</body>
+</html>
